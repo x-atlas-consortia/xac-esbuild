@@ -1,0 +1,29 @@
+{
+  "name": "xac-esbuild",
+  "version": "1.0.0",
+  "description": "Simple transpiler configuration for modern JS",
+  "keywords": [
+    "transpiler",
+    "js",
+    "jsx"
+  ],
+  "homepage": "https://github.com/x-atlas-consortia/xac-esbuild#readme",
+  "bugs": {
+    "url": "https://github.com/x-atlas-consortia/xac-esbuild/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/x-atlas-consortia/xac-esbuild.git"
+  },
+  "license": "ISC",
+  "author": "dbmi.pitt.edu",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "esbuild": "0.27.3",
+    "glob": "^13.0.6"
+  }
+}
