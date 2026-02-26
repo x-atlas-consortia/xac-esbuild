@@ -20,7 +20,7 @@ const _config = {
   o: 'dist/',
   t: '**/*.js',
   banner: null,
-  base: path.join(process.cwd(), '..')
+  base: process.cwd()
 }
 
 // Handle cli params
