@@ -23,25 +23,33 @@ const _config = {
   base: process.cwd()
 }
 
-// Handle cli params
-let kv, key
-for (const a of args) {
-  kv = a.split('=')
-  key = kv[0].replace('-', '')
-  _config[key] = _config.base + '/' + kv[1]
-  if (key === 'copyFiles') {
-    _config[key] = kv[1].split(',')
-  }
-}
-
-const entryPoints = glob.sync(_config.s + _config.t);
-const tempOutputFile = _config.outfile + '.js';
-
 function log(msg) {
   if (_config.log) {
     console.log(`${colors.magenta}xac-esbuild`, msg)
   }
 }
+
+// Handle cli params
+let kv, key
+log('Handling cli params')
+for (const a of args) {
+  kv = a.split('=')
+  key = kv[0].replace('-', '')
+ 
+  if (key === 'copyFiles') {
+    _config[key] = kv[1].split(',')
+  } else if (key === 't') {
+    _config[key] = kv[1]
+  } else {
+     _config[key] = _config.base + '/' + kv[1]
+  }
+  log(_config[key])
+}
+
+const entryPoints = glob.sync(_config.s + _config.t);
+const tempOutputFile = _config.outfile + '.js';
+
+
 
 function initTranspiling() {
   if (_config.banner) {
@@ -87,15 +95,17 @@ function mergeFiles(filePathsArray, outputFilePath) {
  * @param {object} banner 
  */
 function transpileWithEsbuild(banner) {
+  log('Begun transpiling ...')
+  log(entryPoints)
   const sharedConfig = {
     entryPoints: _config.outfile ? [tempOutputFile] : entryPoints,
-    bundle: _config.outfile ? undefined : true,
+    //bundle: _config.outfile ? undefined : true,
     minifyWhitespace: true, // Remove whitespace
     minifySyntax: true,     // Shorten syntax
     minifyIdentifiers: false,
     banner,
     // Exclude dependencies from the bundle so consumers install them separately
-    external: Object.keys(dependencies || {}).concat(Object.keys(peerDependencies || {})),
+    //external: Object.keys(dependencies || {}).concat(Object.keys(peerDependencies || {})),
   };
 
   /**
@@ -104,13 +114,22 @@ function transpileWithEsbuild(banner) {
    */
   function copyFile(file) {
     log(`Copying file ${file} to ${_config.o}`);
-    fs.copyFile(`./${_config.s}${file}`, `${_config.o}${file}`, (err) => {
+    fs.copyFile(`${_config.s}${file}`, `${_config.o}${file}`, (err) => {
       if (err) throw err;
     });
   }
 
   build({
     ...sharedConfig,
+    loader: {
+      '.ttf': 'copy',
+      '.woff': 'copy',
+      '.woff2': 'copy',
+      '.otf': 'copy',
+      '.eot': 'copy',
+      '.svg': 'copy',
+      '.css': 'copy'
+    },
     format: 'esm',
     outdir: _config.outfile ? undefined : _config.o,
     outfile: _config.outfile
