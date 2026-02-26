@@ -38,10 +38,10 @@ for (const a of args) {
  
   if (key === 'copyFiles') {
     _config[key] = kv[1].split(',')
-  } else if (key === 't') {
-    _config[key] = kv[1]
-  } else {
+  } else if (key === 's' || key === 'o' || key === 'banner') {
      _config[key] = _config.base + '/' + kv[1]
+  } else {
+    _config[key] = kv[1]
   }
   log(_config[key])
 }
@@ -99,13 +99,13 @@ function transpileWithEsbuild(banner) {
   log(entryPoints)
   const sharedConfig = {
     entryPoints: _config.outfile ? [tempOutputFile] : entryPoints,
-    //bundle: _config.outfile ? undefined : true,
+    bundle: _config.bundle ? true : undefined,
     minifyWhitespace: true, // Remove whitespace
     minifySyntax: true,     // Shorten syntax
     minifyIdentifiers: false,
     banner,
     // Exclude dependencies from the bundle so consumers install them separately
-    //external: Object.keys(dependencies || {}).concat(Object.keys(peerDependencies || {})),
+    external: _config.excludeExternal ? Object.keys(dependencies || {}).concat(Object.keys(peerDependencies || {})) : undefined,
   };
 
   /**
@@ -128,9 +128,11 @@ function transpileWithEsbuild(banner) {
       '.otf': 'copy',
       '.eot': 'copy',
       '.svg': 'copy',
-      '.css': 'copy'
+      '.css': 'copy',
+      '.jsx': 'jsx',
+      '.js': _config.loaderJs || 'jsx',
     },
-    format: 'esm',
+    format: _config.format || 'esm',
     outdir: _config.outfile ? undefined : _config.o,
     outfile: _config.outfile
   }).then(() => {
@@ -149,7 +151,10 @@ function transpileWithEsbuild(banner) {
     } catch(err) {}
     
     
-  }).catch(() => process.exit(1));
+  }).catch((err) => {
+    console.error(err)
+    process.exit(1)
+  });
 }
 
 // Main kick off
