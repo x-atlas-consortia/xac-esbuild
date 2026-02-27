@@ -15,45 +15,71 @@ const colors = {
 };
 
 const args = process.argv.slice(2);
+/***
+ * s (path of src)
+ * o (path of output directory)
+ * outfile (path and name of outfile)
+ * t (file types to transpile) 
+ */
 const _config = {
   s: 'src/',
   o: 'dist/',
   t: '**/*.js',
   banner: null,
+  excludeExternal: false,
   base: process.cwd()
 }
 
+const _esbuildOptions = {
+  minifyWhitespace: true,
+  minifySyntax: true,
+  splitting: false,
+  bundle: false,
+}
+
+
 function log(msg) {
   if (_config.log) {
-    console.log(`${colors.magenta}xac-esbuild`, msg)
+    console.log(`${colors.magenta}xac-esbuild${colors.reset}`, msg)
   }
 }
 
+function logKeyVal(k, v) {
+  log(`${colors.blue}${k} ${colors.green}${v}`)
+}
+
+const comprises = (arr, needle) => {
+    return arr.some((i) => i?.toLowerCase() === needle.toLowerCase())
+}
+
+const bool = (v) => v === '1' ? true : false 
+
 // Handle cli params
 let kv, key
-log('Handling cli params')
 for (const a of args) {
   kv = a.split('=')
   key = kv[0].replace('-', '')
  
-  if (key === 'copyFiles') {
+  if (comprises(['copyFiles', 'target'], key)) {
     _config[key] = kv[1].split(',')
-  } else if (key === 's' || key === 'o' || key === 'banner') {
+  } else if (comprises(['s', 'o', 'banner'], key)) {
      _config[key] = _config.base + '/' + kv[1]
+  } else if (comprises(['minifySyntax', 'minifyWhitespace', 'splitting', 'bundle'], key)) {
+     _esbuildOptions[key] = bool(kv[1])
+  } else if (comprises(['excludeExternal'], key)) {
+     _config[key] = bool(kv[1])
   } else {
     _config[key] = kv[1]
   }
-  log(_config[key])
+  logKeyVal(`${key}:`,`${_config[key]}`)
 }
 
 const entryPoints = glob.sync(_config.s + _config.t);
 const tempOutputFile = _config.outfile + '.js';
 
-
-
 function initTranspiling() {
   if (_config.banner) {
-    log(`Configuring ${_config.banner}`)
+    logKeyVal('Configuring', `${_config.banner}`)
     fs.readFile(_config.banner, function (err, data) {
       if (err) {
         log(err)
@@ -85,8 +111,7 @@ function mergeFiles(filePathsArray, outputFilePath) {
   });
 
   fs.writeFileSync(outputFilePath, combinedContent);
-  log(`Successfully merged files into ${outputFilePath}`);
-
+  logKeyVal('Successfully merged files into ',`${outputFilePath}`)
   initTranspiling();
 }
 
@@ -95,32 +120,17 @@ function mergeFiles(filePathsArray, outputFilePath) {
  * @param {object} banner 
  */
 function transpileWithEsbuild(banner) {
-  log('Begun transpiling ...')
+  log('Now transpiling ...')
   log(entryPoints)
-  const sharedConfig = {
-    entryPoints: _config.outfile ? [tempOutputFile] : entryPoints,
-    bundle: _config.bundle ? true : undefined,
-    minifyWhitespace: true, // Remove whitespace
-    minifySyntax: true,     // Shorten syntax
-    minifyIdentifiers: false,
-    banner,
-    // Exclude dependencies from the bundle so consumers install them separately
-    external: _config.excludeExternal ? Object.keys(dependencies || {}).concat(Object.keys(peerDependencies || {})) : undefined,
-  };
-
-  /**
-   * For copying a file to other location
-   * @param {string} file 
-   */
-  function copyFile(file) {
-    log(`Copying file ${file} to ${_config.o}`);
-    fs.copyFile(`${_config.s}${file}`, `${_config.o}${file}`, (err) => {
-      if (err) throw err;
-    });
-  }
 
   build({
-    ...sharedConfig,
+    ..._esbuildOptions,
+    entryPoints: _config.outfile ? [tempOutputFile] : entryPoints,
+    banner,
+    target: _config.target,
+    // Exclude dependencies from the bundle so consumers install them separately
+    external: _config.excludeExternal ? Object.keys(dependencies || {}).concat(Object.keys(peerDependencies || {})) : undefined,
+    minifyIdentifiers: false,
     loader: {
       '.ttf': 'copy',
       '.woff': 'copy',
@@ -138,12 +148,6 @@ function transpileWithEsbuild(banner) {
   }).then(() => {
     
     try {
-      if (_config.copyFiles && Array.isArray(_config.copyFiles)) {
-        const allFiles = fs.readdirSync(_config.s)
-        const files = allFiles.filter((f) => _config.copyFiles.includes(path.extname(f)))
-        files.map((f) => copyFile(f))
-      }
-
       if (_config.outfile) {
         log('Cleaning up ...');
         fs.unlinkSync(tempOutputFile)
