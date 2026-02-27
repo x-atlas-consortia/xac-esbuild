@@ -55,23 +55,29 @@ const comprises = (arr, needle) => {
 const bool = (v) => v === '1' ? true : false 
 
 // Handle cli params
-let kv, key
-for (const a of args) {
-  kv = a.split('=')
-  key = kv[0].replace('-', '')
- 
-  if (comprises(['copyFiles', 'target'], key)) {
-    _config[key] = kv[1].split(',')
-  } else if (comprises(['s', 'o', 'banner'], key)) {
-     _config[key] = _config.base + '/' + kv[1]
-  } else if (comprises(['minifySyntax', 'minifyWhitespace', 'splitting', 'bundle'], key)) {
-     _esbuildOptions[key] = bool(kv[1])
-  } else if (comprises(['excludeExternal'], key)) {
-     _config[key] = bool(kv[1])
-  } else {
-    _config[key] = kv[1]
+try {
+  let kv, key
+  for (const a of args) {
+    kv = a.split('=')
+    key = kv[0].replace('-', '')
+  
+    if (comprises(['copyFiles', 'target'], key)) {
+      _config[key] = kv[1].split(',')
+    } else if (comprises(['s', 'o', 'banner'], key)) {
+      _config[key] = _config.base + '/' + kv[1]
+    } else if (comprises(['minifySyntax', 'minifyWhitespace', 'splitting', 'bundle'], key)) {
+      _esbuildOptions[key] = bool(kv[1])
+    } else if (comprises(['excludeExternal'], key)) {
+      _config[key] = bool(kv[1])
+    } else if (comprises(['loader'], key)) {
+      _config[key] = JSON.parse(kv[1])
+    } else {
+      _config[key] = kv[1]
+    }
+    logKeyVal(`${key}:`,`${_config[key]}`)
   }
-  logKeyVal(`${key}:`,`${_config[key]}`)
+} catch(err) {
+  console.log(err)
 }
 
 const entryPoints = glob.sync(_config.s + _config.t);
@@ -131,7 +137,7 @@ function transpileWithEsbuild(banner) {
     // Exclude dependencies from the bundle so consumers install them separately
     external: _config.excludeExternal ? Object.keys(dependencies || {}).concat(Object.keys(peerDependencies || {})) : undefined,
     minifyIdentifiers: false,
-    loader: {
+    loader: _config.loader || {
       '.ttf': 'copy',
       '.woff': 'copy',
       '.woff2': 'copy',
@@ -139,6 +145,7 @@ function transpileWithEsbuild(banner) {
       '.eot': 'copy',
       '.svg': 'copy',
       '.css': 'copy',
+      '.html': 'copy',
       '.jsx': 'jsx',
       '.js': _config.loaderJs || 'jsx',
     },
